@@ -1,8 +1,9 @@
 /**
  * @author Carlos Aguilera
- * @apiNote  1/28/2016
+ * @apiNote 1/28/2016
  * @version 2.0.0
  */
+
 import com.sun.source.util.JavacTask;
 
 import javax.tools.*;
@@ -25,8 +26,8 @@ import java.util.regex.Pattern;
 
 
 public class JavaREPL {
-    private static int fileNumber = 0;
     private static final File tempDir = new File(System.getProperty("java.io.tmpdir"));
+    private static int fileNumber = 0;
     private static URLClassLoader loader;
 
     public static void main(String[] args) throws IOException {
@@ -41,22 +42,23 @@ public class JavaREPL {
         NestedReader reader = new NestedReader(stdin);
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         URI temp = tempDir.toURI();
-        loader = new URLClassLoader(new URL[] {temp.toURL()});
+        loader = new URLClassLoader(new URL[]{temp.toURL()});
         while (true) {
             System.out.print("> ");
             String java = reader.getNestedString();
-            //System.out.println(java);
-            if (java == null) {
+            if (java == null || java.isEmpty()) {
                 break;
             }
-            /*java = changePrint(java);
-            execute(compiler, java);*/
+            java = changePrint(java);
+            execute(compiler, java);
         }
     }
-    /**@param compiler
+
+    /**
+     * @param compiler
      * @param java
      **/
-    public static void execute(JavaCompiler compiler,String java) throws IOException {
+    public static void execute(JavaCompiler compiler, String java) throws IOException {
         boolean child = isChild();
         Path fileToCompile = writeFile(java, tempDir, true, child);
         if (!isDeclaration(fileToCompile.toString())) {
@@ -80,13 +82,12 @@ public class JavaREPL {
         if (success) {
             Class c = load(fileToCompile.getFileName().toString());
             invoke(c);
-        }
-        else {
+        } else {
             fileNumber--;
             List<Diagnostic<? extends JavaFileObject>> list = diagnostics.getDiagnostics();
             for (int i = 0; i < list.size(); i++) {
                 Diagnostic d = list.get(i);
-                System.err.println("line " + d.getLineNumber()+ ": " + d.getMessage(new Locale("English")));
+                System.err.println("line " + d.getLineNumber() + ": " + d.getMessage(new Locale("English")));
             }
         }
     }
@@ -95,7 +96,7 @@ public class JavaREPL {
      * @param fileName - the newly written java file that has been compiled.
      * @return Class - a Class object that has been loaded by the classloader.
      */
-    public static Class load(String fileName){
+    public static Class load(String fileName) {
         Class c = null;
         try {
             int index = fileName.indexOf(".");
@@ -123,7 +124,7 @@ public class JavaREPL {
         }
     }
 
-    public static Path writeFile(String java, File directory, boolean declaration, boolean child) throws IOException{
+    public static Path writeFile(String java, File directory, boolean declaration, boolean child) throws IOException {
         String fileName = "Interp_" + fileNumber;
         int prevFile = fileNumber - 1;
         Path p = Paths.get(directory.toString() + File.separator + fileName + ".java");
@@ -134,14 +135,13 @@ public class JavaREPL {
         writer.append("import java.io.*;\n" +
                 "import java.util.*;\n\n\n" +
                 "public class ");
-        if (child){
+        if (child) {
             parent.append("extends " + "Interp_" + prevFile);
         }
         if (declaration) {
             writer.format("%s %s { \n\t" + "public static %s\n\t" +
                     "public static void exec(){\n\t%s\n\t}\n}\n", fileName, parent.toString(), java, "");
-        }
-        else {
+        } else {
             writer.format("%s %s {\n\t" +
                     "public static void exec() {\n\t" +
                     "%s\n\t}\n}\n", fileName, parent.toString(), java);
@@ -151,7 +151,12 @@ public class JavaREPL {
         writer.close();
         return p;
     }
-    public static boolean isDeclaration(String file) throws IOException{
+
+    /**
+     * @param file the being parsed for errors.
+     * @return if the file is just a declaration or not
+     */
+    public static boolean isDeclaration(String file) throws IOException {
         File tempFile = new File(file);
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
 
@@ -164,10 +169,10 @@ public class JavaREPL {
 
         Iterable<String> compileOptions =
                 Arrays.asList("-d", tempDir.toString(), "-cp",
-                        tempDir.toString()+System.getProperty("path.separator")+System.getProperty("java.class.path"));
+                        tempDir.toString() + System.getProperty("path.separator") + System.getProperty("java.class.path"));
 
         JavacTask task =
-                (JavacTask)compiler.getTask(null, fileManager, diagnostics, compileOptions, null, compilationUnits);
+                (JavacTask) compiler.getTask(null, fileManager, diagnostics, compileOptions, null, compilationUnits);
 
         task.parse();
 
@@ -175,7 +180,10 @@ public class JavaREPL {
         return list.size() == 0;
     }
 
-    public static boolean isChild(){
+    /**
+     * @return if the file is the first file or the children
+     */
+    public static boolean isChild() {
         return fileNumber > 0;
     }
 
@@ -184,16 +192,16 @@ public class JavaREPL {
      * @param code - the java code to clean.
      * @return code - the changed java code.
      **/
-    public static String changePrint(String code){
+    public static String changePrint(String code) {
         String newCode;
         String codeToChange;
         Pattern regex = Pattern.compile("(?ims)^print\\s*.+;");
         Matcher m = regex.matcher(code);
-        while(m.find()){
+        while (m.find()) {
             codeToChange = m.group();
             newCode = codeToChange.replaceAll("print", "System.out.println(");
             newCode = newCode.replaceAll(";", ");");
-            code = code.replace(codeToChange,newCode);
+            code = code.replace(codeToChange, newCode);
         }
         return code;
     }

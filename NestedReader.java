@@ -12,6 +12,7 @@ public class NestedReader {
     private final char LEFT_PAREN = '(';
     private final char RIGHT_PAREN = ')';
     private final char FORWARD_SLASH = '/';
+    private final char ASTERISK = '*';
     private final int LINE_FEED = 10;
     private final char NEW_LINE = '\n';
     private final int NULL = 0;
@@ -20,133 +21,69 @@ public class NestedReader {
     Stack<Character> stack;
     int c;
 
-    public NestedReader(BufferedReader input){
+    public NestedReader(BufferedReader input) {
         this.input = input;
     }
 
-    public String getNestedString () throws IOException {
+    public String getNestedString() throws IOException {
         this.buf = new StringBuilder();
         this.stack = new Stack<Character>();
-        //c = input.read();
-        //while(Character.isValidCodePoint(c))
-        for (int c = input.read(); Character.isValidCodePoint(c); c = input.read()) {
-            System.out.print((char)c);
+        for (c = input.read(); Character.isValidCodePoint(c); c = input.read()) {
             if (c == FORWARD_SLASH) {
-                buf.append((char)c);
                 c = input.read();
-                System.out.print((char)c);
                 if (c == FORWARD_SLASH) {
-                    buf.append((char)c);
-                    continue;
+                    c = input.read();
+                    while (c != LINE_FEED) {
+                        c = input.read();
+                    }
+                } else if (c == ASTERISK) {
+                    if (!isBlockComment()) {
+                        break;
+                    }
+                } else {
+                    break;
                 }
-                else {
-                    // todo check if it will work
-                    return buf.toString();
-                }
-                // todo add the asterisk (*) feature for block comments
-            }
-            else if (c == LEFT_BRACKET) {
+            } else if (c == LEFT_BRACKET) {
                 stack.push(LEFT_BRACKET);
-            }
-            else if (c == RIGHT_BRACKET) {
-                // todo fix the check
-                if (Character.compare(stack.peek().charValue(), LEFT_BRACKET) == 0) {
+                buf.append(LEFT_BRACKET);
+            } else if (c == RIGHT_BRACKET) {
+                if (Character.compare(stack.peek(), LEFT_BRACKET) == 0) {
                     stack.pop();
+                    buf.append(RIGHT_BRACKET);
                 }
-            }
-            else if (c == LEFT_PAREN) {
+            } else if (c == LEFT_PAREN) {
                 stack.push(LEFT_PAREN);
-            }
-            else if (c == RIGHT_PAREN) {
-                if (Character.compare(stack.peek().charValue(), LEFT_PAREN) == 0) {
+                buf.append(LEFT_PAREN);
+            } else if (c == RIGHT_PAREN) {
+                if (Character.compare(stack.peek(), LEFT_PAREN) == 0) {
                     stack.pop();
+                    buf.append(RIGHT_PAREN);
                 }
-            }
-            else if (c == NEW_LINE) {
-                if (stack.isEmpty()) { return buf.toString(); } // todo FIXME
-            }
-            else if (c == NULL) {
-
+            } else if (c == NEW_LINE) {
+                if (stack.isEmpty()) {
+                    break;
+                }
+                buf.append(NEW_LINE);
+            } else if (c == NULL) {
+                break;
             } else {
-                buf.append((char)c);
+                buf.append((char) c);
             }
         }
-        System.out.println();
-        //System.out.println(buf.toString());
-
-        // todo remove
         return this.buf.toString();
     }
-    /*public String getNestedString() throws IOException {
-        this.buf = new StringBuilder();
-        this.stack = new Stack<>();
-        String buffer = null;
-        boolean consuming = true;
-        boolean printing = false;
-        do {
-            consume();
-            if (!Character.isValidCodePoint(c)) {
-                buf = null;
-                break;
-            }
-            switch(c) {
-                case '/':
-                    consume();
-                    if (c == '/') {
-                        buf.append((char) c);
-                        int t;
-                        do {
-                            t = input.read();
-                        }while( t != 10);
-                        c = t;
-                    }
-                    break;
-                case '{':
-                    stack.push('}');
-                    break;
-                case '}':
-                    if (!stack.isEmpty()) {
-                        if (Character.compare(stack.peek().charValue(), '}') == 0) {
-                            stack.pop();
-                        }
-                    }
-                    break;
-                case '(':
-                    stack.push(new Character(')'));
-                    break;
-                case ')':
-                    if (!stack.isEmpty()) {
-                        if (Character.compare(stack.peek().charValue(), ')') == 0) {
-                            stack.pop();
-                        }
-                    }
-                    break;
-                case '\n':
-                    if (stack.isEmpty())
-                        consuming = false;
-                    buffer = buf.toString();
-                    break;
-                case 0:
-                    consuming = false;
-                    break;
-                default:
-                    break;
-            }
-        }while (consuming);
-        c = 0;
 
-
-        if (buf != null) {
-            buffer = buf.toString();
-        }
-        return buffer;
-    }
-
-    public void consume() throws IOException{
-        if (c > 0) {
-            buf.append((char) c);
+    private boolean isBlockComment() throws IOException {
+        c = input.read();
+        while (c != ASTERISK) {
+            c = input.read();
         }
         c = input.read();
-    }*/
+        if (c == FORWARD_SLASH) {
+            return true;
+        } else if (c != FORWARD_SLASH && c != ASTERISK) {
+            return false;
+        }
+        return isBlockComment();
+    }
 }
-
